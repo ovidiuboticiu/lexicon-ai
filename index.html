@@ -3,7 +3,7 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7rgRIlVzw5A3vxPK+aZ/rSuBabEUZi7zoLS82dCJm7w=' 'sha256-hxOFD/aZoKhaum5796+BuZoVG2y2k8prMfgERflVhJ4=' 'sha256-iXwSHP4IAtphsyvRTTaU/+N3YGNbp3v3zAdBxADBYD8=' 'sha256-/7S48gWuucx6n0R7PRNKBuoyIC5YGWVEG6ajl56RnWE='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7rgRIlVzw5A3vxPK+aZ/rSuBabEUZi7zoLS82dCJm7w=' 'sha256-P7tjeekiKNzsYslJ7j6Xn4BxZUKmKrBhmlf/xJOifT8=' 'sha256-iXwSHP4IAtphsyvRTTaU/+N3YGNbp3v3zAdBxADBYD8=' 'sha256-/7S48gWuucx6n0R7PRNKBuoyIC5YGWVEG6ajl56RnWE='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Lexiconul agenților AI — dicționar AI explicat în română (EN–RO) · ediția a doua</title>
 <meta content="Dicționar AI explicat în română: 409 de termeni EN–RO, de la noțiunile de bază până la agenți AI, cu exemple, trasee de învățare și scenarii. Funcționează și offline." name="description"/>
@@ -1055,6 +1055,15 @@ footer{max-width:980px;margin:0 auto;padding:0 22px 42px;font-size:13px;color:va
         for(const w of n.split(/[^a-z0-9]+/))if(w.length>=4){const dw=editDistance(q,w,max);if(dw<best){best=dw;whole=1;}}
       }
       if(best<=max)found.push([best,whole,e]);
+      // Greșeli mai mari în a doua parte a cuvântului („haluciant”): aceleași prime 5 litere ca o denumire.
+      else if(q.length>=6){
+        const pre=q.slice(0,5);let near=Infinity,wh=1;
+        for(const n of names)for(const w of [n,...n.split(/[^a-z0-9]+/)])if(w.startsWith(pre)){
+          const d=editDistance(q,w,99),isWhole=w===n?0:1;
+          if(d<near||(d===near&&isWhole<wh)){near=d;wh=isWhole;}
+        }
+        if(near<Infinity)found.push([max+1+near,wh,e]);
+      }
     }
     // Ordinea: cea mai mică distanță; apoi potrivirea pe denumirea întreagă înaintea celei pe un cuvânt din ea.
     return found.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||collator.compare(a[2].dataset.en,b[2].dataset.en)).slice(0,3).map(x=>x[2]);
