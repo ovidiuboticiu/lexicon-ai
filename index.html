@@ -3,7 +3,7 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7rgRIlVzw5A3vxPK+aZ/rSuBabEUZi7zoLS82dCJm7w=' 'sha256-N1OpH6MAKf/rg3OJoYIkXY8IaMG5Q3WDKOKGPDIsQGE=' 'sha256-iXwSHP4IAtphsyvRTTaU/+N3YGNbp3v3zAdBxADBYD8=' 'sha256-/7S48gWuucx6n0R7PRNKBuoyIC5YGWVEG6ajl56RnWE='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7rgRIlVzw5A3vxPK+aZ/rSuBabEUZi7zoLS82dCJm7w=' 'sha256-hxOFD/aZoKhaum5796+BuZoVG2y2k8prMfgERflVhJ4=' 'sha256-iXwSHP4IAtphsyvRTTaU/+N3YGNbp3v3zAdBxADBYD8=' 'sha256-/7S48gWuucx6n0R7PRNKBuoyIC5YGWVEG6ajl56RnWE='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Lexiconul agenților AI — dicționar AI explicat în română (EN–RO) · ediția a doua</title>
 <meta content="Dicționar AI explicat în română: 409 de termeni EN–RO, de la noțiunile de bază până la agenți AI, cu exemple, trasee de învățare și scenarii. Funcționează și offline." name="description"/>
@@ -91,6 +91,7 @@ mark{background:var(--mark);color:var(--mark-text);padding:0 .05em;border-radius
 .suggestions{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;max-height:min(52vh,340px);overflow-y:auto;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
 .suggestion{display:block;width:100%;text-align:left;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:var(--paper);color:var(--text);cursor:pointer}
 .suggestion:last-child{border-bottom:0}
+.sug-head{padding:8px 12px 4px;font-size:12.5px;font-weight:650;color:var(--muted)}
 .suggestion:hover,.suggestion.active{background:var(--accent-soft)}
 .suggestion strong{font-size:14px}
 .suggestion small{display:block;margin-top:2px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1145,10 +1146,14 @@ footer{max-width:980px;margin:0 auto;padding:0 22px 42px;font-size:13px;color:va
     input.setAttribute('aria-expanded',String(on));
     if(!on){input.removeAttribute('aria-activedescendant');activeIndex=-1;}
   }
+  // Când nu există niciun rezultat, lista de sub căsuță arată termenii apropiați ca scriere („Ai vrut să cauți”).
+  let dymList=[];
   function updateSuggestions(q){
     suggestions.replaceChildren();activeIndex=-1;input.removeAttribute('aria-activedescendant');
-    const list=q?ranked(q).slice(0,12):[];
+    const dym=!!(q&&dymList.length);
+    const list=dym?dymList:(q?ranked(q).slice(0,12):[]);
     if(!list.length){suggestionsVisible(false);return;}
+    if(dym){const h=document.createElement('div');h.className='sug-head';h.setAttribute('role','presentation');h.textContent='Ai vrut să cauți:';suggestions.appendChild(h);}
     list.forEach((e,i)=>{
       const option=document.createElement('button');
       option.type='button';option.tabIndex=-1;option.className='suggestion';option.dataset.id=e.id;
@@ -1156,7 +1161,7 @@ footer{max-width:980px;margin:0 auto;padding:0 22px 42px;font-size:13px;color:va
       const title=document.createElement('strong');title.textContent=e.dataset.en;
       const sub=document.createElement('small');sub.textContent=e.dataset.ro;
       option.append(title,sub);
-      option.addEventListener('click',()=>jumpTo(e,input.value));suggestions.appendChild(option);
+      option.addEventListener('click',()=>{if(dym){input.value='';applyFilter();jumpTo(e,'');}else jumpTo(e,input.value);});suggestions.appendChild(option);
     });
     suggestionsVisible(true);
     // O cautare noua trebuie sa inceapa cu prima sugestie, nu cu pozitia
@@ -1192,10 +1197,11 @@ footer{max-width:980px;margin:0 auto;padding:0 22px 42px;font-size:13px;color:va
       }
     }
     empty.style.display=(matches.length||extraHits.length)?'none':'block';
+    dymList=(!matches.length&&!extraHits.length&&q)?didYouMean(q):[];
     if(!matches.length&&!extraHits.length&&q)renderEmpty(q);
     const nN=nameHits.size,nT=matches.length-nN,nX=extraHits.length;
     if(!q)status.textContent='Caută în engleză sau în română, cu sau fără diacritice. Enter deschide primul rezultat.';
-    else if(!matches.length&&!nX)status.textContent='Niciun rezultat. Încearcă altă expresie.';
+    else if(!matches.length&&!nX)status.textContent=dymList.length?`Niciun termen cu acest nume. Ai vrut să cauți „${dymList[0].dataset.en}”?`:'Niciun rezultat. Încearcă altă expresie.';
     else{
       const parts=[];
       if(nN)parts.push(nN===1?'1 termen cu acest nume':`${nN} termeni cu acest nume`);
@@ -1309,7 +1315,11 @@ footer{max-width:980px;margin:0 auto;padding:0 22px 42px;font-size:13px;color:va
     const opts=[...suggestions.querySelectorAll('.suggestion')];
     if(ev.key==='Enter'){
       ev.preventDefault();if(!norm(input.value))return;
-      if(!matches.length){const x=extraBox&&extraBox.querySelector('a');if(x)x.click();return;}
+      if(!matches.length){
+        // Fără rezultate: Enter deschide sugestia „Ai vrut să cauți” (cea aleasă cu săgețile sau prima).
+        if(dymList.length){const e=dymList[Math.max(activeIndex,0)]||dymList[0];input.value='';applyFilter();jumpTo(e,'');return;}
+        const x=extraBox&&extraBox.querySelector('a');if(x)x.click();return;
+      }
       const chosen=activeIndex>=0 ? document.getElementById(opts[activeIndex]?.dataset.id) : (ranked(norm(input.value))[0]||matches[0]);
       jumpTo(chosen,input.value);return;
     }
